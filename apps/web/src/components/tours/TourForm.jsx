@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronDown, ChevronUp, AlertTriangle, Trash2 } from 'lucide-react'
-import SearchableDropdown from '../shared/SearchableDropdown'
 import Modal from '../shared/Modal'
 
-const UNIT_TYPES = ['Studio', '1BR', '1BR+Den', '2BR', '2BR+Den', '3BR', 'Penthouse']
+const UNIT_TYPES = [
+  'Studio A', 'Studio B',
+  '1bd 1ba A', '1bd 1ba B', '1bd 1ba C', '1bd 1ba D',
+  '2bd 2ba A', '2bd 2ba B', '2bd 2ba C', '2bd 2ba D', '2bd 2ba E', '2bd 2ba F',
+]
 const SOURCES = ['Walk-in', 'Website', 'Zillow', 'Apartments.com', 'Referral', 'Social Media', 'Other']
 const STATUSES = ['hot', 'warm', 'cold', 'applied', 'not_interested']
 const CONCESSION_OPTIONS = [0, 2, 4, 6, 8]
@@ -19,13 +22,13 @@ function calcNetEffective(marketRent, concessionTotal, leaseTerm) {
   return marketRent - (concessionTotal / leaseTerm)
 }
 
-export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, onDelete, onCreateApplication }) {
+export default function TourForm({ tour, rentFloors, onSubmit, onCancel, onDelete, onCreateApplication }) {
   const [expanded, setExpanded] = useState(!!tour)
   const [showApplyPrompt, setShowApplyPrompt] = useState(false)
   const [savedTour, setSavedTour] = useState(null)
   const [form, setForm] = useState({
     prospect_name: '', prospect_email: '', prospect_phone: '',
-    unit_id: '', unit_type: '', unit_number: '', unit_code: '', market_rent: '',
+    unit_type: '', unit_number: '', market_rent: '',
     concession_weeks: '0', desired_term: '',
     budget: '', variance: '',
     comps_toured: '0', estimated_move_in: '',
@@ -34,15 +37,12 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
 
   useEffect(() => {
     if (tour) {
-      const selectedUnit = (units || []).find(u => u.id === tour.unit_id)
       setForm({
         prospect_name: tour.prospect_name || '',
         prospect_email: tour.prospect_email || '',
         prospect_phone: tour.prospect_phone || '',
-        unit_id: tour.unit_id || '',
         unit_type: tour.unit_type || '',
         unit_number: tour.unit_number || '',
-        unit_code: selectedUnit?.unit_code || '',
         market_rent: tour.market_rent || '',
         concession_weeks: String(tour.concession_weeks || 0),
         desired_term: tour.desired_term || '',
@@ -57,16 +57,7 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
         notes: tour.notes || '',
       })
     }
-  }, [tour, units])
-
-  const unitOptions = useMemo(() =>
-    (units || []).filter((u) => u.status === 'available' || u.id === form.unit_id).map((u) => ({
-      value: u.id,
-      label: `${u.unit_number} — ${u.unit_type}${u.unit_code ? ` (${u.unit_code})` : ''} ($${Number(u.market_rent).toLocaleString()})`,
-      unit: u,
-    })),
-    [units, form.unit_id]
-  )
+  }, [tour])
 
   // Computed concession values
   const mr = Number(form.market_rent) || 0
@@ -75,11 +66,11 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
   const concessionTotal = calcConcessionTotal(mr, weeks)
   const netEffective = leaseTerm > 0 ? calcNetEffective(mr, concessionTotal, leaseTerm) : ''
 
-  // Rent floor lookup
+  // Rent floor lookup — use unit_type as the key since it matches unit_code now
   const rentFloor = useMemo(() => {
-    if (!form.unit_code || !rentFloors?.length) return null
-    return rentFloors.find(f => f.unit_code === form.unit_code)
-  }, [form.unit_code, rentFloors])
+    if (!form.unit_type || !rentFloors?.length) return null
+    return rentFloors.find(f => f.unit_code === form.unit_type)
+  }, [form.unit_type, rentFloors])
 
   // Warnings
   const termWarning = weeks > 0 && leaseTerm > 0 && leaseTerm < MIN_TERM[weeks]
@@ -87,7 +78,7 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
     : null
 
   const floorWarning = rentFloor && netEffective !== '' && Number(netEffective) < Number(rentFloor.min_gross_rent)
-    ? `Below minimum gross rent of $${Number(rentFloor.min_gross_rent).toLocaleString()} for ${form.unit_code} per lender agreement.`
+    ? `Below minimum gross rent of $${Number(rentFloor.min_gross_rent).toLocaleString()} for ${form.unit_type} per lender agreement.`
     : null
 
   // Variance computed from net effective
@@ -97,18 +88,6 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
 
   const set = (key) => (e) => {
     setForm(prev => ({ ...prev, [key]: e.target.value }))
-  }
-
-  const handleUnitSelect = (option) => {
-    const u = option.unit
-    setForm(prev => ({
-      ...prev,
-      unit_id: u.id,
-      unit_type: u.unit_type,
-      unit_number: u.unit_number,
-      unit_code: u.unit_code || '',
-      market_rent: u.market_rent || '',
-    }))
   }
 
   const handleSubmit = async (e, addAnother = false) => {
@@ -127,7 +106,7 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
     } else if (addAnother) {
       setForm({
         ...form, prospect_name: '', prospect_email: '', prospect_phone: '',
-        unit_id: '', unit_type: '', unit_number: '', unit_code: '', market_rent: '',
+        unit_type: '', unit_number: '', market_rent: '',
         concession_weeks: '0', desired_term: '',
         budget: '', variance: '',
         comps_toured: '0', estimated_move_in: '',
@@ -154,14 +133,6 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
           <input type="text" required value={form.prospect_name} onChange={set('prospect_name')} className={inputClass} />
         </div>
 
-        <SearchableDropdown
-          label="Unit"
-          options={unitOptions}
-          value={form.unit_id}
-          onChange={handleUnitSelect}
-          placeholder="Search units..."
-        />
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1.5">Unit Type</label>
@@ -169,6 +140,17 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
               <option value="">Select...</option>
               {UNIT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1.5">Unit Number</label>
+            <input type="text" value={form.unit_number} onChange={set('unit_number')} placeholder="e.g. 301" className={inputClass} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1.5">Market Rent</label>
+            <input type="number" step="0.01" value={form.market_rent} onChange={set('market_rent')} placeholder="e.g. 3450" className={inputClass} />
           </div>
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1.5">Source</label>
@@ -275,37 +257,33 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-text-primary mb-1.5">Market Rent</label>
-                <input type="number" step="0.01" value={form.market_rent} onChange={set('market_rent')} className={inputClass} />
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">Budget</label>
                 <input type="number" step="0.01" value={form.budget} onChange={set('budget')} className={inputClass} />
               </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">Variance</label>
                 <input type="number" step="0.01" value={computedVariance} readOnly className={`${inputClass} bg-surface-hover`} />
               </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">Comps Toured</label>
                 <input type="number" value={form.comps_toured} onChange={set('comps_toured')} className={inputClass} />
               </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">Est. Move-in</label>
                 <input type="date" value={form.estimated_move_in} onChange={set('estimated_move_in')} className={inputClass} />
               </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">Profession</label>
                 <input type="text" value={form.profession} onChange={set('profession')} className={inputClass} />
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1.5">Vehicles</label>
-              <input type="number" value={form.num_vehicles} onChange={set('num_vehicles')} className={`${inputClass} max-w-[120px]`} />
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1.5">Vehicles</label>
+                <input type="number" value={form.num_vehicles} onChange={set('num_vehicles')} className={`${inputClass} max-w-[120px]`} />
+              </div>
             </div>
           </div>
         )}

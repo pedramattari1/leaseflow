@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 
-const UNIT_TYPES = ['Studio', '1BR', '1BR+Den', '2BR', '2BR+Den', '3BR', 'Penthouse']
+const UNIT_TYPES = [
+  'Studio A', 'Studio B',
+  '1bd 1ba A', '1bd 1ba B', '1bd 1ba C', '1bd 1ba D',
+  '2bd 2ba A', '2bd 2ba B', '2bd 2ba C', '2bd 2ba D', '2bd 2ba E', '2bd 2ba F',
+]
 const STATUSES = ['available', 'occupied', 'notice', 'down']
 
 export default function UnitForm({ unit, onSubmit, onCancel }) {
