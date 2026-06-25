@@ -5,6 +5,7 @@ import { useUnits } from '../hooks/useUnits'
 import { useApplications } from '../hooks/useApplications'
 import { api } from '../lib/api'
 import SlideOver from '../components/shared/SlideOver'
+import Modal from '../components/shared/Modal'
 import LoadingSpinner from '../components/shared/LoadingSpinner'
 import ErrorBanner from '../components/shared/ErrorBanner'
 import { downloadCsv } from '../lib/downloadCsv'
@@ -29,12 +30,13 @@ function formatWeekLabel(weekStart) {
 }
 
 export default function DailyLog() {
-  const { tours, allTours, loading, error, selectedDate, setSelectedDate, weekStart, summary, createTour, updateTour, refetch } = useTours()
+  const { tours, allTours, loading, error, selectedDate, setSelectedDate, weekStart, summary, createTour, updateTour, deleteTour, refetch } = useTours()
   const { units } = useUnits()
   const { createApplication } = useApplications()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
   const [rentFloors, setRentFloors] = useState([])
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   useEffect(() => {
     api.get('/api/units/rent-floors').then(setRentFloors).catch(console.error)
@@ -64,6 +66,18 @@ export default function DailyLog() {
       const result = await createTour(form)
       return result
     }
+    setShowForm(false)
+    setEditing(null)
+  }
+
+  const handleDeleteRequest = (tour) => {
+    setDeleteTarget(tour)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    await deleteTour(deleteTarget.id)
+    setDeleteTarget(null)
     setShowForm(false)
     setEditing(null)
   }
@@ -143,7 +157,7 @@ export default function DailyLog() {
           <LoadingSpinner message="Loading tours…" />
         ) : (
           <>
-            <TourTable tours={tours} onEdit={(t) => { setEditing(t); setShowForm(true) }} />
+            <TourTable tours={tours} onEdit={(t) => { setEditing(t); setShowForm(true) }} onDelete={handleDeleteRequest} />
             <TourSummary summary={summary} />
           </>
         )}
@@ -159,9 +173,32 @@ export default function DailyLog() {
           rentFloors={rentFloors}
           onSubmit={handleSubmit}
           onCancel={() => { setShowForm(false); setEditing(null) }}
+          onDelete={handleDeleteRequest}
           onCreateApplication={handleCreateApplication}
         />
       </SlideOver>
+
+      <Modal
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Tour"
+        footer={
+          <>
+            <button onClick={() => setDeleteTarget(null)}
+              className="px-4 py-2 text-sm font-medium border border-border rounded-md hover:bg-surface-hover cursor-pointer">
+              Cancel
+            </button>
+            <button onClick={handleDeleteConfirm}
+              className="px-4 py-2 text-sm font-semibold text-white bg-error rounded-md hover:bg-error/90 cursor-pointer">
+              Delete
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-text-secondary">
+          Are you sure you want to delete the tour for <strong>{deleteTarget?.prospect_name}</strong>? This action cannot be undone.
+        </p>
+      </Modal>
     </div>
   )
 }

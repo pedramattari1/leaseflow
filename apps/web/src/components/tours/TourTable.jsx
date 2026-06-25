@@ -1,4 +1,4 @@
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, Trash2 } from 'lucide-react'
 import StatusBadge from '../shared/StatusBadge'
 
 function fmt(val) {
@@ -28,7 +28,7 @@ const columns = [
   { key: 'notes', label: 'Notes', className: 'max-w-[200px] truncate' },
 ]
 
-export default function TourTable({ tours, onEdit }) {
+export default function TourTable({ tours, onEdit, onDelete }) {
   if (tours.length === 0) {
     return (
       <div className="py-16 text-center">
@@ -51,6 +51,7 @@ export default function TourTable({ tours, onEdit }) {
                 {col.label}
               </th>
             ))}
+            <th className="px-4 py-3 w-10" />
           </tr>
         </thead>
         <tbody>
@@ -72,6 +73,14 @@ export default function TourTable({ tours, onEdit }) {
                   )}
                 </td>
               ))}
+              <td className="px-4 py-3">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(tour) }}
+                  className="p-1.5 rounded-md hover:bg-error-bg cursor-pointer transition-colors"
+                >
+                  <Trash2 size={14} className="text-text-tertiary hover:text-error" />
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>

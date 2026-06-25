@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { ChevronDown, ChevronUp, AlertTriangle, Trash2 } from 'lucide-react'
 import SearchableDropdown from '../shared/SearchableDropdown'
 import Modal from '../shared/Modal'
 
@@ -19,7 +19,7 @@ function calcNetEffective(marketRent, concessionTotal, leaseTerm) {
   return marketRent - (concessionTotal / leaseTerm)
 }
 
-export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, onCreateApplication }) {
+export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, onDelete, onCreateApplication }) {
   const [expanded, setExpanded] = useState(!!tour)
   const [showApplyPrompt, setShowApplyPrompt] = useState(false)
   const [savedTour, setSavedTour] = useState(null)
@@ -311,6 +311,12 @@ export default function TourForm({ tour, units, rentFloors, onSubmit, onCancel, 
         )}
 
         <div className="flex flex-col sm:flex-row justify-end gap-3 pt-2">
+          {tour && onDelete && (
+            <button type="button" onClick={() => onDelete(tour)}
+              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-error border border-error/30 rounded-md hover:bg-error-bg cursor-pointer sm:mr-auto">
+              <Trash2 size={14} /> Delete
+            </button>
+          )}
           <button type="button" onClick={onCancel}
             className="px-5 py-2.5 text-sm font-medium border border-border rounded-md hover:bg-surface-hover cursor-pointer">
             Cancel
