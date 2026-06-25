@@ -30,14 +30,6 @@ export default function SharedDashboard() {
     return () => clearInterval(interval)
   }, [selectedDate, fetchData])
 
-  const navigateDay = (dir) => {
-    setSelectedDate(prev => {
-      const d = new Date(prev + 'T00:00:00')
-      d.setDate(d.getDate() + dir)
-      return d.toISOString().split('T')[0]
-    })
-  }
-
   const goToday = () => setSelectedDate(new Date().toISOString().split('T')[0])
 
   if (error) {
@@ -77,7 +69,7 @@ export default function SharedDashboard() {
           toursDetail={data.toursDetail}
           appsDetail={data.appsDetail}
           selectedDate={selectedDate}
-          navigateDay={navigateDay}
+          setSelectedDate={setSelectedDate}
           goToday={goToday}
         />
 

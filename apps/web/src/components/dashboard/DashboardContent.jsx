@@ -1,4 +1,5 @@
-import { CalendarDays, Users, FileCheck, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useRef } from 'react'
+import { CalendarDays, Users, FileCheck, Calendar } from 'lucide-react'
 import MetricCard from './MetricCard'
 import WeeklyChart from './WeeklyChart'
 import PipelineSummary from './PipelineSummary'
@@ -6,6 +7,8 @@ import ConversionFunnel from './ConversionFunnel'
 import VelocityCard from './VelocityCard'
 import TourDetail from './TourDetail'
 import ApplicationsDetail from './ApplicationsDetail'
+
+const TRACKING_START = '2026-06-25'
 
 function formatDateLabel(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
@@ -16,14 +19,26 @@ function isToday(dateStr) {
   return dateStr === new Date().toISOString().split('T')[0]
 }
 
+function isBeforeTracking(dateStr) {
+  return dateStr < TRACKING_START
+}
+
 export default function DashboardContent({
   today, weekly, pipeline, funnel, velocity, toursDetail, appsDetail,
-  selectedDate, navigateDay, goToday,
+  selectedDate, setSelectedDate, goToday,
   headerRight,
 }) {
+  const dateInputRef = useRef(null)
+
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  const handleDateChange = (e) => {
+    if (e.target.value) setSelectedDate(e.target.value)
+  }
+
+  const beforeTracking = isBeforeTracking(selectedDate)
 
   return (
     <div>
@@ -31,19 +46,29 @@ export default function DashboardContent({
         <div>
           <h1 className="text-xl font-bold text-text-primary">Dashboard</h1>
           <div className="flex items-center gap-2 mt-1">
-            <button onClick={() => navigateDay(-1)}
-              className="p-1 rounded hover:bg-surface-hover cursor-pointer">
-              <ChevronLeft size={16} strokeWidth={1.5} />
-            </button>
-            <button onClick={goToday}
-              className="px-2 py-0.5 text-xs font-medium border border-border rounded hover:bg-surface-hover cursor-pointer">
-              Today
-            </button>
-            <button onClick={() => navigateDay(1)}
-              className="p-1 rounded hover:bg-surface-hover cursor-pointer">
-              <ChevronRight size={16} strokeWidth={1.5} />
-            </button>
-            <span className="text-sm text-text-secondary ml-1">{formatDateLabel(selectedDate)}</span>
+            <div className="relative">
+              <button
+                onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.focus()}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-text-primary border border-border rounded-md hover:bg-surface-hover cursor-pointer"
+              >
+                <Calendar size={14} strokeWidth={1.5} className="text-text-tertiary" />
+                {formatDateLabel(selectedDate)}
+              </button>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={selectedDate}
+                onChange={handleDateChange}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+            {!isToday(selectedDate) && (
+              <button onClick={goToday}
+                className="px-2 py-1 text-xs font-medium border border-border rounded-md hover:bg-surface-hover cursor-pointer">
+                Today
+              </button>
+            )}
           </div>
         </div>
         {headerRight}
@@ -65,8 +90,16 @@ export default function DashboardContent({
         <MetricCard label="Leases This Week" value={today?.leases_this_week ?? 0} icon={FileCheck} />
       </div>
 
-      <div className="mb-4"><TourDetail tours={toursDetail || []} /></div>
-      <div className="mb-4"><ApplicationsDetail applications={appsDetail || []} /></div>
+      {beforeTracking ? (
+        <div className="mb-4 py-8 text-center">
+          <p className="text-sm text-text-tertiary">Tracking started June 25, 2026</p>
+        </div>
+      ) : (
+        <>
+          <div className="mb-4"><TourDetail tours={toursDetail || []} /></div>
+          <div className="mb-4"><ApplicationsDetail applications={appsDetail || []} /></div>
+        </>
+      )}
 
       {weekly && <div className="mb-4"><WeeklyChart data={weekly.data} weekOf={weekly.weekOf} /></div>}
 
