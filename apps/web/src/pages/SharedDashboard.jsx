@@ -1,34 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import MetricCard from '../components/dashboard/MetricCard'
-import PipelineSummary from '../components/dashboard/PipelineSummary'
-import ConversionFunnel from '../components/dashboard/ConversionFunnel'
-import VelocityCard from '../components/dashboard/VelocityCard'
-import TourDetail from '../components/dashboard/TourDetail'
-import ApplicationsDetail from '../components/dashboard/ApplicationsDetail'
-import { CalendarDays, Users, FileCheck } from 'lucide-react'
+import DashboardContent from '../components/dashboard/DashboardContent'
+
+function getInitialDate() {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('date') || new Date().toISOString().split('T')[0]
+}
 
 export default function SharedDashboard() {
   const { token } = useParams()
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(getInitialDate)
 
-  useEffect(() => {
-    fetchData()
-    const interval = setInterval(fetchData, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [token])
-
-  async function fetchData() {
+  const fetchData = useCallback(async (date) => {
     try {
-      const d = await api.get(`/api/share/${token}/dashboard`)
+      const d = await api.get(`/api/share/${token}/dashboard?date=${date}`)
       setData(d)
       setError(null)
     } catch (err) {
       setError(err.message)
     }
+  }, [token])
+
+  useEffect(() => {
+    fetchData(selectedDate)
+    const interval = setInterval(() => fetchData(selectedDate), 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [selectedDate, fetchData])
+
+  const navigateDay = (dir) => {
+    setSelectedDate(prev => {
+      const d = new Date(prev + 'T00:00:00')
+      d.setDate(d.getDate() + dir)
+      return d.toISOString().split('T')[0]
+    })
   }
+
+  const goToday = () => setSelectedDate(new Date().toISOString().split('T')[0])
 
   if (error) {
     return (
@@ -58,21 +68,18 @@ export default function SharedDashboard() {
           <p className="text-sm font-medium text-text-secondary">Live Leasing Metrics</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-          <MetricCard label="Tours Today" value={data.today?.tours_today ?? 0} icon={CalendarDays} />
-          <MetricCard label="New Applications" value={data.today?.new_applications ?? 0} icon={Users} />
-          <MetricCard label="Leases This Week" value={data.today?.leases_this_week ?? 0} icon={FileCheck} />
-        </div>
-
-        {data.toursDetail && <div className="mb-4"><TourDetail tours={data.toursDetail} /></div>}
-        {data.appsDetail && <div className="mb-4"><ApplicationsDetail applications={data.appsDetail} /></div>}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          <PipelineSummary data={data.pipeline} />
-          <ConversionFunnel steps={data.funnel?.steps} />
-        </div>
-
-        {data.velocity && <VelocityCard avgDays={data.velocity.avg_days} />}
+        <DashboardContent
+          today={data.today}
+          weekly={data.weekly}
+          pipeline={data.pipeline}
+          funnel={data.funnel}
+          velocity={data.velocity}
+          toursDetail={data.toursDetail}
+          appsDetail={data.appsDetail}
+          selectedDate={selectedDate}
+          navigateDay={navigateDay}
+          goToday={goToday}
+        />
 
         <p className="text-center text-xs text-text-tertiary mt-12">Powered by LeaseFlow</p>
       </div>

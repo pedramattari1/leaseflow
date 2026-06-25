@@ -59,20 +59,24 @@ router.get('/:token/dashboard', async (req, res) => {
     }
 
     const propertyId = link.property_id
-    const today = new Date().toISOString().split('T')[0]
-    const monday = getMonday(new Date()).toISOString().split('T')[0]
+    const date = req.query.date || new Date().toISOString().split('T')[0]
+    const monday = getMonday(new Date(date + 'T00:00:00')).toISOString().split('T')[0]
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
     const since = thirtyDaysAgo.toISOString().split('T')[0]
 
-    const [property, todayData, pipeline, funnel, velocity, toursDetail, appsDetail] = await Promise.all([
+    const priorMonday = new Date(monday + 'T00:00:00')
+    priorMonday.setDate(priorMonday.getDate() - 7)
+    const priorMondayStr = priorMonday.toISOString().split('T')[0]
+
+    const [property, todayData, pipeline, funnel, velocity, toursDetail, appsDetail, weekCurrent, weekPrior] = await Promise.all([
       pool.query('SELECT name FROM properties WHERE id = $1', [propertyId]),
       pool.query(
         `SELECT
           (SELECT COUNT(*)::int FROM tours WHERE property_id = $1 AND tour_date = $2) as tours_today,
           (SELECT COUNT(*)::int FROM applications WHERE property_id = $1 AND created_at::date = $2) as new_applications,
           (SELECT COUNT(*)::int FROM applications WHERE property_id = $1 AND pipeline_stage = 'lease_executed' AND lease_execution_date >= $3) as leases_this_week`,
-        [propertyId, today, monday]
+        [propertyId, date, monday]
       ),
       pool.query(
         `SELECT pipeline_stage, COUNT(*)::int as count,
@@ -102,7 +106,7 @@ router.get('/:token/dashboard', async (req, res) => {
          FROM tours t JOIN prospects p ON t.prospect_id = p.id
          WHERE t.property_id = $1 AND t.tour_date = $2
          ORDER BY t.created_at DESC`,
-        [propertyId, today]
+        [propertyId, date]
       ),
       pool.query(
         `SELECT a.*, p.name as prospect_name,
@@ -113,12 +117,41 @@ router.get('/:token/dashboard', async (req, res) => {
          ORDER BY a.stage_entered_at ASC`,
         [propertyId]
       ),
+      pool.query(
+        `SELECT tour_date, COUNT(*)::int as count FROM tours
+         WHERE property_id = $1 AND tour_date >= $2::date AND tour_date < $2::date + interval '7 days'
+         GROUP BY tour_date ORDER BY tour_date`,
+        [propertyId, monday]
+      ),
+      pool.query(
+        `SELECT tour_date, COUNT(*)::int as count FROM tours
+         WHERE property_id = $1 AND tour_date >= $2::date AND tour_date < $2::date + interval '7 days'
+         GROUP BY tour_date ORDER BY tour_date`,
+        [propertyId, priorMondayStr]
+      ),
     ])
+
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const mondayDate = new Date(monday + 'T00:00:00')
+    const weeklyData = days.map((day, i) => {
+      const cur = new Date(mondayDate)
+      cur.setDate(cur.getDate() + i)
+      const pri = new Date(priorMonday)
+      pri.setDate(pri.getDate() + i)
+      const cStr = cur.toISOString().split('T')[0]
+      const pStr = pri.toISOString().split('T')[0]
+      return {
+        day,
+        current: weekCurrent.rows.find(r => r.tour_date.toISOString().split('T')[0] === cStr)?.count || 0,
+        prior: weekPrior.rows.find(r => r.tour_date.toISOString().split('T')[0] === pStr)?.count || 0,
+      }
+    })
 
     const f = funnel.rows[0]
     res.json({
       property_name: property.rows[0]?.name || 'Property',
       today: todayData.rows[0],
+      weekly: { data: weeklyData, weekOf: monday },
       pipeline: pipeline.rows,
       funnel: {
         steps: [
