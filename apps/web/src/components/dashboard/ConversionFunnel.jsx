@@ -8,7 +8,7 @@ export default function ConversionFunnel({ steps }) {
         {steps.map((step, i) => {
           const maxCount = steps[0].count || 1
           const pct = Math.max(((step.count / maxCount) * 100), 8)
-          const conversionPct = i > 0 && steps[i - 1].count > 0
+          const conversionPct = i > 0 && steps[i - 1].count > 0 && step.count <= steps[i - 1].count
             ? ((step.count / steps[i - 1].count) * 100).toFixed(0)
             : null
 
