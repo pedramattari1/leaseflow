@@ -1,5 +1,4 @@
-import { useRef } from 'react'
-import { CalendarDays, Users, FileCheck, Calendar } from 'lucide-react'
+import { CalendarDays, Users, FileCheck } from 'lucide-react'
 import MetricCard from './MetricCard'
 import WeeklyChart from './WeeklyChart'
 import PipelineSummary from './PipelineSummary'
@@ -28,8 +27,6 @@ export default function DashboardContent({
   selectedDate, setSelectedDate, goToday,
   headerRight,
 }) {
-  const dateInputRef = useRef(null)
-
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -46,23 +43,12 @@ export default function DashboardContent({
         <div>
           <h1 className="text-xl font-bold text-text-primary">Dashboard</h1>
           <div className="flex items-center gap-2 mt-1">
-            <div className="relative">
-              <button
-                onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.focus()}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-text-primary border border-border rounded-md hover:bg-surface-hover cursor-pointer"
-              >
-                <Calendar size={14} strokeWidth={1.5} className="text-text-tertiary" />
-                {formatDateLabel(selectedDate)}
-              </button>
-              <input
-                ref={dateInputRef}
-                type="date"
-                value={selectedDate}
-                onChange={handleDateChange}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-                style={{ width: '100%', height: '100%' }}
-              />
-            </div>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={handleDateChange}
+              className="px-2.5 py-1 text-sm text-text-primary border border-border rounded-md hover:bg-surface-hover cursor-pointer bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+            />
             {!isToday(selectedDate) && (
               <button onClick={goToday}
                 className="px-2 py-1 text-xs font-medium border border-border rounded-md hover:bg-surface-hover cursor-pointer">
