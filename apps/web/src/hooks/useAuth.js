@@ -1,3 +1,5 @@
+import { useUser, useClerk } from '@clerk/clerk-react'
+
 const useClerkEnabled = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY && import.meta.env.VITE_DEV_BYPASS_AUTH !== 'true'
 
 function useDemoAuth() {
@@ -7,16 +9,12 @@ function useDemoAuth() {
   }
 }
 
-let useClerkAuth = useDemoAuth
-if (useClerkEnabled) {
-  const { useUser, useClerk } = await import('@clerk/clerk-react')
-  useClerkAuth = function useClerkAuth() {
-    const { user } = useUser()
-    const { signOut } = useClerk()
-    return {
-      user: user ? { name: user.fullName, email: user.primaryEmailAddress?.emailAddress } : null,
-      signOut,
-    }
+function useClerkAuth() {
+  const { user } = useUser()
+  const { signOut } = useClerk()
+  return {
+    user: user ? { name: user.fullName, email: user.primaryEmailAddress?.emailAddress } : null,
+    signOut,
   }
 }
 
