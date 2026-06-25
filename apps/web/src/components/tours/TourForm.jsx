@@ -187,18 +187,24 @@ export default function TourForm({ tour, rentFloors, onSubmit, onCancel, onDelet
           </div>
 
           {(weeks > 0 || netEffective !== '') && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="space-y-1.5 pt-1">
               {weeks > 0 && (
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xs text-text-secondary">Concession:</span>
+                  <span className="text-xs text-text-secondary">Total Concession:</span>
                   <span className="text-sm font-semibold tabular-nums">${concessionTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              {weeks > 0 && leaseTerm > 0 && (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs text-text-secondary">Monthly Deduction:</span>
+                  <span className="text-sm font-semibold tabular-nums">${(concessionTotal / leaseTerm).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo</span>
                 </div>
               )}
               {netEffective !== '' && (
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs text-text-secondary">Net Effective:</span>
                   <span className={`text-sm font-semibold tabular-nums ${floorWarning ? 'text-error' : 'text-success'}`}>
-                    ${Number(netEffective).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${Number(netEffective).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo
                   </span>
                 </div>
               )}
