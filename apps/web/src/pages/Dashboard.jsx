@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, Users, FileCheck, Share2 } from 'lucide-react'
+import { CalendarDays, Users, FileCheck, Share2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useDashboard } from '../hooks/useDashboard'
 import ErrorBanner from '../components/shared/ErrorBanner'
 import LoadingSpinner from '../components/shared/LoadingSpinner'
@@ -8,11 +8,32 @@ import WeeklyChart from '../components/dashboard/WeeklyChart'
 import PipelineSummary from '../components/dashboard/PipelineSummary'
 import ConversionFunnel from '../components/dashboard/ConversionFunnel'
 import VelocityCard from '../components/dashboard/VelocityCard'
+import TourDetail from '../components/dashboard/TourDetail'
+import ApplicationsDetail from '../components/dashboard/ApplicationsDetail'
 import ShareModal from '../components/dashboard/ShareModal'
 
+function getInitialDate() {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('date') || new Date().toISOString().split('T')[0]
+}
+
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function isToday(dateStr) {
+  return dateStr === new Date().toISOString().split('T')[0]
+}
+
 export default function Dashboard() {
-  const { today, weekly, pipeline, funnel, velocity, loading, error, refetch } = useDashboard()
+  const { today, weekly, pipeline, funnel, velocity, toursDetail, appsDetail,
+    loading, error, refetch, selectedDate, navigateDay, goToday } = useDashboard(getInitialDate())
   const [shareOpen, setShareOpen] = useState(false)
+
+  const scrollTo = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   if (loading) {
     return (
@@ -34,10 +55,24 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="text-xl font-bold text-text-primary">Dashboard</h1>
-          <p className="text-sm text-text-secondary mt-1">Leasing metrics and performance overview.</p>
+          <div className="flex items-center gap-2 mt-1">
+            <button onClick={() => navigateDay(-1)}
+              className="p-1 rounded hover:bg-surface-hover cursor-pointer">
+              <ChevronLeft size={16} strokeWidth={1.5} />
+            </button>
+            <button onClick={goToday}
+              className="px-2 py-0.5 text-xs font-medium border border-border rounded hover:bg-surface-hover cursor-pointer">
+              Today
+            </button>
+            <button onClick={() => navigateDay(1)}
+              className="p-1 rounded hover:bg-surface-hover cursor-pointer">
+              <ChevronRight size={16} strokeWidth={1.5} />
+            </button>
+            <span className="text-sm text-text-secondary ml-1">{formatDateLabel(selectedDate)}</span>
+          </div>
         </div>
         <button
           onClick={() => setShareOpen(true)}
@@ -49,10 +84,23 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-        <MetricCard label="Tours Today" value={today?.tours_today ?? 0} icon={CalendarDays} />
-        <MetricCard label="New Applications" value={today?.new_applications ?? 0} icon={Users} />
+        <MetricCard
+          label={isToday(selectedDate) ? 'Tours Today' : 'Tours'}
+          value={today?.tours_today ?? 0}
+          icon={CalendarDays}
+          onClick={() => scrollTo('tours-detail')}
+        />
+        <MetricCard
+          label="New Applications"
+          value={today?.new_applications ?? 0}
+          icon={Users}
+          onClick={() => scrollTo('apps-detail')}
+        />
         <MetricCard label="Leases This Week" value={today?.leases_this_week ?? 0} icon={FileCheck} />
       </div>
+
+      <div className="mb-4"><TourDetail tours={toursDetail} /></div>
+      <div className="mb-4"><ApplicationsDetail applications={appsDetail} /></div>
 
       {weekly && <div className="mb-4"><WeeklyChart data={weekly.data} weekOf={weekly.weekOf} /></div>}
 

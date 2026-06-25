@@ -65,7 +65,7 @@ router.get('/:token/dashboard', async (req, res) => {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
     const since = thirtyDaysAgo.toISOString().split('T')[0]
 
-    const [property, todayData, pipeline, funnel, velocity] = await Promise.all([
+    const [property, todayData, pipeline, funnel, velocity, toursDetail, appsDetail] = await Promise.all([
       pool.query('SELECT name FROM properties WHERE id = $1', [propertyId]),
       pool.query(
         `SELECT
@@ -97,6 +97,22 @@ router.get('/:token/dashboard', async (req, res) => {
            AND a.lease_execution_date IS NOT NULL AND a.lease_execution_date >= CURRENT_DATE - interval '30 days'`,
         [propertyId]
       ),
+      pool.query(
+        `SELECT t.*, p.name as prospect_name, p.source
+         FROM tours t JOIN prospects p ON t.prospect_id = p.id
+         WHERE t.property_id = $1 AND t.tour_date = $2
+         ORDER BY t.created_at DESC`,
+        [propertyId, today]
+      ),
+      pool.query(
+        `SELECT a.*, p.name as prospect_name,
+                EXTRACT(DAY FROM now() - a.stage_entered_at)::int as days_in_stage
+         FROM applications a JOIN prospects p ON a.prospect_id = p.id
+         WHERE a.property_id = $1
+           AND a.pipeline_stage NOT IN ('lease_executed', 'move_in_scheduled')
+         ORDER BY a.stage_entered_at ASC`,
+        [propertyId]
+      ),
     ])
 
     const f = funnel.rows[0]
@@ -114,6 +130,8 @@ router.get('/:token/dashboard', async (req, res) => {
         ],
       },
       velocity: { avg_days: velocity.rows[0].avg_days || 0 },
+      toursDetail: toursDetail.rows,
+      appsDetail: appsDetail.rows,
     })
   } catch (err) {
     res.status(500).json({ error: err.message })

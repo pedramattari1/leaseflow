@@ -5,6 +5,8 @@ import MetricCard from '../components/dashboard/MetricCard'
 import PipelineSummary from '../components/dashboard/PipelineSummary'
 import ConversionFunnel from '../components/dashboard/ConversionFunnel'
 import VelocityCard from '../components/dashboard/VelocityCard'
+import TourDetail from '../components/dashboard/TourDetail'
+import ApplicationsDetail from '../components/dashboard/ApplicationsDetail'
 import { CalendarDays, Users, FileCheck } from 'lucide-react'
 
 export default function SharedDashboard() {
@@ -61,6 +63,9 @@ export default function SharedDashboard() {
           <MetricCard label="New Applications" value={data.today?.new_applications ?? 0} icon={Users} />
           <MetricCard label="Leases This Week" value={data.today?.leases_this_week ?? 0} icon={FileCheck} />
         </div>
+
+        {data.toursDetail && <div className="mb-4"><TourDetail tours={data.toursDetail} /></div>}
+        {data.appsDetail && <div className="mb-4"><ApplicationsDetail applications={data.appsDetail} /></div>}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           <PipelineSummary data={data.pipeline} />

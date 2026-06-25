@@ -6,17 +6,17 @@ const PROPERTY_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
 
 router.get('/today', async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0]
-    const weekStart = getMonday(new Date()).toISOString().split('T')[0]
+    const date = req.query.date || new Date().toISOString().split('T')[0]
+    const weekStart = getMonday(new Date(date + 'T00:00:00')).toISOString().split('T')[0]
 
     const [tours, apps, leases] = await Promise.all([
       pool.query(
         'SELECT COUNT(*)::int as count FROM tours WHERE property_id = $1 AND tour_date = $2',
-        [PROPERTY_ID, today]
+        [PROPERTY_ID, date]
       ),
       pool.query(
         'SELECT COUNT(*)::int as count FROM applications WHERE property_id = $1 AND created_at::date = $2',
-        [PROPERTY_ID, today]
+        [PROPERTY_ID, date]
       ),
       pool.query(
         `SELECT COUNT(*)::int as count FROM applications
@@ -38,7 +38,7 @@ router.get('/today', async (req, res) => {
 
 router.get('/weekly', async (req, res) => {
   try {
-    const weekDate = req.query.week ? new Date(req.query.week) : new Date()
+    const weekDate = req.query.date ? new Date(req.query.date + 'T00:00:00') : req.query.week ? new Date(req.query.week) : new Date()
     const currentMonday = getMonday(weekDate)
     const priorMonday = new Date(currentMonday)
     priorMonday.setDate(priorMonday.getDate() - 7)
@@ -77,6 +77,42 @@ router.get('/weekly', async (req, res) => {
     })
 
     res.json({ data, weekOf: currentMonday.toISOString().split('T')[0] })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.get('/tours-detail', async (req, res) => {
+  try {
+    const date = req.query.date || new Date().toISOString().split('T')[0]
+    const { rows } = await pool.query(
+      `SELECT t.*, p.name as prospect_name, p.email as prospect_email,
+              p.phone as prospect_phone, p.profession, p.num_vehicles, p.source
+       FROM tours t
+       JOIN prospects p ON t.prospect_id = p.id
+       WHERE t.property_id = $1 AND t.tour_date = $2
+       ORDER BY t.created_at DESC`,
+      [PROPERTY_ID, date]
+    )
+    res.json(rows)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+router.get('/apps-detail', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT a.*, p.name as prospect_name, p.email as prospect_email, p.phone as prospect_phone,
+              EXTRACT(DAY FROM now() - a.stage_entered_at)::int as days_in_stage
+       FROM applications a
+       JOIN prospects p ON a.prospect_id = p.id
+       WHERE a.property_id = $1
+         AND a.pipeline_stage NOT IN ('lease_executed', 'move_in_scheduled')
+       ORDER BY a.stage_entered_at ASC`,
+      [PROPERTY_ID]
+    )
+    res.json(rows)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
