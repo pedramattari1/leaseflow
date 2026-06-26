@@ -138,13 +138,16 @@ router.post('/', async (req, res) => {
 })
 
 router.put('/:id', async (req, res) => {
+  const client = await pool.connect()
   try {
+    await client.query('BEGIN')
     const {
+      prospect_name, prospect_email, prospect_phone, profession, num_vehicles, source,
       unit_id, unit_type, unit_number, market_rent, concession, concession_weeks, effective_rent,
       budget, variance, comps_toured, desired_term, estimated_move_in, status, notes
     } = req.body
 
-    const { rows } = await pool.query(
+    const { rows } = await client.query(
       `UPDATE tours SET unit_id=$1, unit_type=$2, unit_number=$3, market_rent=$4,
         concession=$5, concession_weeks=$6, effective_rent=$7, budget=$8, variance=$9, comps_toured=$10,
         desired_term=$11, estimated_move_in=$12, status=$13, notes=$14, updated_at=now()
@@ -154,10 +157,39 @@ router.put('/:id', async (req, res) => {
        comps_toured || 0, desired_term || null, estimated_move_in || null,
        status, notes || null, req.params.id, PROPERTY_ID]
     )
-    if (!rows.length) return res.status(404).json({ error: 'Tour not found' })
-    res.json(rows[0])
+    if (!rows.length) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Tour not found' })
+    }
+
+    const tour = rows[0]
+    const { rows: prospectRows } = await client.query(
+      `UPDATE prospects SET
+        name=COALESCE($1, name), email=$2, phone=$3,
+        profession=$4, num_vehicles=$5, source=$6, updated_at=now()
+       WHERE id=$7 AND property_id=$8
+       RETURNING name, email, phone, profession, num_vehicles, source`,
+      [prospect_name || null, prospect_email || null, prospect_phone || null,
+       profession || null, num_vehicles ?? 0, source || null, tour.prospect_id, PROPERTY_ID]
+    )
+
+    await client.query('COMMIT')
+
+    const p = prospectRows[0]
+    if (p) {
+      tour.prospect_name = p.name
+      tour.prospect_email = p.email
+      tour.prospect_phone = p.phone
+      tour.profession = p.profession
+      tour.num_vehicles = p.num_vehicles
+      tour.source = p.source
+    }
+    res.json(tour)
   } catch (err) {
+    await client.query('ROLLBACK')
     res.status(500).json({ error: err.message })
+  } finally {
+    client.release()
   }
 })
 

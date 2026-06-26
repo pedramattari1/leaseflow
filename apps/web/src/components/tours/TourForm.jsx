@@ -274,7 +274,7 @@ export default function TourForm({ tour, rentFloors, onSubmit, onCancel, onDelet
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">Comps Toured</label>
-                <input type="number" value={form.comps_toured} onChange={set('comps_toured')} className={inputClass} />
+                <input type="number" min="0" step="1" value={form.comps_toured} onChange={set('comps_toured')} className={inputClass} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">Est. Move-in</label>
@@ -288,7 +288,7 @@ export default function TourForm({ tour, rentFloors, onSubmit, onCancel, onDelet
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">Vehicles</label>
-                <input type="number" value={form.num_vehicles} onChange={set('num_vehicles')} className={`${inputClass} max-w-[120px]`} />
+                <input type="number" min="0" step="1" value={form.num_vehicles} onChange={set('num_vehicles')} className={`${inputClass} max-w-[120px]`} />
               </div>
             </div>
           </div>
