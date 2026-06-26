@@ -126,6 +126,8 @@ CREATE TABLE IF NOT EXISTS notification_settings (
   weekly_report_day TEXT DEFAULT 'monday',
   pipeline_stall_days INTEGER DEFAULT 5,
   recipient_emails TEXT[],
+  daily_export_enabled BOOLEAN DEFAULT false,
+  export_recipient_emails TEXT[],
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );

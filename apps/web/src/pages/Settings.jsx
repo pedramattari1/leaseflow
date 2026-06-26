@@ -148,11 +148,13 @@ function NotificationsTab() {
   const [settings, setSettings] = useState(null)
   const [saving, setSaving] = useState(false)
   const [emailInput, setEmailInput] = useState('')
+  const [exportEmailInput, setExportEmailInput] = useState('')
 
   useEffect(() => {
     api.get('/api/notifications/settings').then((s) => {
       setSettings(s)
       setEmailInput((s.recipient_emails || []).join(', '))
+      setExportEmailInput((s.export_recipient_emails || []).join(', '))
     }).catch(console.error)
   }, [])
 
@@ -160,7 +162,8 @@ function NotificationsTab() {
     setSaving(true)
     try {
       const recipient_emails = emailInput.split(',').map((e) => e.trim()).filter(Boolean)
-      const updated = await api.put('/api/notifications/settings', { ...settings, recipient_emails })
+      const export_recipient_emails = exportEmailInput.split(',').map((e) => e.trim()).filter(Boolean)
+      const updated = await api.put('/api/notifications/settings', { ...settings, recipient_emails, export_recipient_emails })
       setSettings(updated)
     } catch (err) {
       console.error(err)
@@ -251,7 +254,34 @@ function NotificationsTab() {
             placeholder="manager@example.com, team@example.com"
             className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
+          <p className="text-xs text-text-tertiary mt-1.5">Used for the daily digest and weekly report.</p>
         </div>
+      </div>
+
+      <div className="bg-surface rounded-lg border border-border p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-text-primary">Daily Leasing Export</h3>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-text-secondary">Email the leasing Excel (.xlsx) export each morning</span>
+          <button
+            onClick={() => setSettings((s) => ({ ...s, daily_export_enabled: !s.daily_export_enabled }))}
+            className={`w-10 h-5.5 rounded-full relative cursor-pointer transition-colors ${settings.daily_export_enabled ? 'bg-primary' : 'bg-border'}`}
+          >
+            <div className={`absolute top-0.5 w-4.5 h-4.5 rounded-full bg-white shadow transition-transform ${settings.daily_export_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </button>
+        </div>
+        {settings.daily_export_enabled && (
+          <div>
+            <label className="text-sm text-text-secondary block mb-1">Export recipients (comma-separated)</label>
+            <input
+              type="text"
+              value={exportEmailInput}
+              onChange={(e) => setExportEmailInput(e.target.value)}
+              placeholder="assetcontrol@example.com, reporting@example.com"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <p className="text-xs text-text-tertiary mt-1.5">The .xlsx file is attached to the email. Sent to the asset-control / reporting team.</p>
+          </div>
+        )}
       </div>
 
       <button

@@ -32,6 +32,20 @@ app.use('/api/dashboard', dashboardRouter)
 app.use('/api/share', shareRouter)
 app.use('/api/notifications', notificationsRouter)
 
-app.listen(PORT, () => {
-  console.log(`API server running on port ${PORT}`)
-})
+async function ensureSchema() {
+  // Idempotent column additions so production picks these up on deploy
+  // without a separate migration step.
+  await pool.query(`
+    ALTER TABLE notification_settings
+      ADD COLUMN IF NOT EXISTS daily_export_enabled BOOLEAN DEFAULT false,
+      ADD COLUMN IF NOT EXISTS export_recipient_emails TEXT[]
+  `)
+}
+
+ensureSchema()
+  .catch((err) => console.error('ensureSchema failed:', err.message))
+  .finally(() => {
+    app.listen(PORT, () => {
+      console.log(`API server running on port ${PORT}`)
+    })
+  })

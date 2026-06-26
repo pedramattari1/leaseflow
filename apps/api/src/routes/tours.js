@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { pool } from '../db/index.js'
+import { buildToursWorkbook } from '../services/export.js'
 
 const router = Router()
 const PROPERTY_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
@@ -62,26 +63,15 @@ router.get('/export', async (req, res) => {
   try {
     const { week } = req.query
     const weekStart = week || new Date().toISOString().split('T')[0]
-    const { rows } = await pool.query(
-      `SELECT t.tour_date, p.name, p.email, p.phone, t.unit_number, t.unit_type,
-              t.market_rent, t.concession, t.effective_rent, t.budget, t.variance,
-              t.comps_toured, t.desired_term, t.estimated_move_in, t.status, t.notes,
-              p.profession, p.num_vehicles, p.source
-       FROM tours t JOIN prospects p ON t.prospect_id = p.id
-       WHERE t.property_id = $1 AND t.tour_date >= $2::date AND t.tour_date < $2::date + interval '7 days'
-       ORDER BY t.tour_date, t.created_at`,
-      [PROPERTY_ID, weekStart]
-    )
-    const headers = ['Date','Name','Email','Phone','Unit','Type','Market Rent','Concession','Eff. Rent','Budget','Variance','Comps','Term','Est. Move-in','Status','Notes','Profession','Vehicles','Source']
-    const csvRows = rows.map(r => [
-      r.tour_date?.toISOString().split('T')[0], r.name, r.email, r.phone, r.unit_number, r.unit_type,
-      r.market_rent, r.concession, r.effective_rent, r.budget, r.variance,
-      r.comps_toured, r.desired_term, r.estimated_move_in?.toISOString().split('T')[0],
-      r.status, `"${(r.notes||'').replace(/"/g,'""')}"`, r.profession, r.num_vehicles, r.source
-    ].join(','))
-    res.setHeader('Content-Type', 'text/csv')
-    res.setHeader('Content-Disposition', `attachment; filename=tours-${weekStart}.csv`)
-    res.send([headers.join(','), ...csvRows].join('\n'))
+    // Inclusive week window: weekStart through weekStart + 6 days.
+    const end = new Date(weekStart + 'T00:00:00')
+    end.setDate(end.getDate() + 6)
+    const weekEnd = end.toISOString().split('T')[0]
+
+    const buffer = await buildToursWorkbook(PROPERTY_ID, weekStart, weekEnd, { title: 'Tours' })
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename=tours-${weekStart}.xlsx`)
+    res.send(buffer)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

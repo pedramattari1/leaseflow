@@ -97,7 +97,7 @@ export default function DailyLog() {
   }, [])
 
   const handleExport = () => {
-    downloadCsv(`/api/tours/export?week=${weekStart}`, `tours-${weekStart}.csv`)
+    downloadCsv(`/api/tours/export?week=${weekStart}`, `tours-${weekStart}.xlsx`)
   }
 
   const handleCreateApplication = async (tour) => {
