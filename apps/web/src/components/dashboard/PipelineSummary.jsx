@@ -35,6 +35,9 @@ export default function PipelineSummary({ data }) {
           ))}
         </div>
       )}
+      {total === 0 && (
+        <p className="text-sm text-text-tertiary text-center py-6">No applications in the pipeline yet</p>
+      )}
       <div className="space-y-2">
         {data.map((d) => (
           <div key={d.pipeline_stage} className="flex items-center justify-between text-sm">
