@@ -12,7 +12,20 @@ import notificationsRouter from './routes/notifications.js'
 const app = express()
 const PORT = process.env.PORT || 3001
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }))
+// Accept a comma-separated list of allowed origins via CORS_ORIGIN,
+// e.g. "https://wimmops.com,https://www.wimmops.com". Falls back to local dev.
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean)
+
+app.use(cors({
+  origin(origin, callback) {
+    // Allow non-browser clients (curl, server-to-server, health checks) with no Origin.
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(new Error(`Origin ${origin} not allowed by CORS`))
+  },
+}))
 app.use(express.json())
 
 app.get('/api/health', async (req, res) => {
