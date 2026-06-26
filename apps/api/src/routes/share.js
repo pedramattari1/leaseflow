@@ -69,7 +69,7 @@ router.get('/:token/dashboard', async (req, res) => {
     priorMonday.setDate(priorMonday.getDate() - 7)
     const priorMondayStr = priorMonday.toISOString().split('T')[0]
 
-    const [property, todayData, pipeline, funnel, velocity, toursDetail, appsDetail, weekCurrent, weekPrior] = await Promise.all([
+    const [property, todayData, pipeline, funnel, velocity, toursDetail, appsDetail, weekCurrent, weekPrior, periodStats, pipelineOverview] = await Promise.all([
       pool.query('SELECT name FROM properties WHERE id = $1', [propertyId]),
       pool.query(
         `SELECT
@@ -129,6 +129,23 @@ router.get('/:token/dashboard', async (req, res) => {
          GROUP BY tour_date ORDER BY tour_date`,
         [propertyId, priorMondayStr]
       ),
+      pool.query(
+        `SELECT
+          (SELECT COUNT(*)::int FROM tours WHERE property_id = $1 AND tour_date >= date_trunc('month', $2::date) AND tour_date <= $2::date) as mtd_tours,
+          (SELECT COUNT(*)::int FROM applications WHERE property_id = $1 AND created_at::date >= date_trunc('month', $2::date) AND created_at::date <= $2::date) as mtd_applications,
+          (SELECT COUNT(*)::int FROM applications WHERE property_id = $1 AND pipeline_stage IN ('lease_executed','move_in_scheduled') AND lease_execution_date >= date_trunc('month', $2::date) AND lease_execution_date <= $2::date) as mtd_leases,
+          (SELECT COUNT(*)::int FROM tours WHERE property_id = $1 AND tour_date >= date_trunc('year', $2::date) AND tour_date <= $2::date) as ytd_tours,
+          (SELECT COUNT(*)::int FROM applications WHERE property_id = $1 AND created_at::date >= date_trunc('year', $2::date) AND created_at::date <= $2::date) as ytd_applications,
+          (SELECT COUNT(*)::int FROM applications WHERE property_id = $1 AND pipeline_stage IN ('lease_executed','move_in_scheduled') AND lease_execution_date >= date_trunc('year', $2::date) AND lease_execution_date <= $2::date) as ytd_leases`,
+        [propertyId, date]
+      ),
+      pool.query(
+        `SELECT
+          (SELECT COUNT(*)::int FROM applications WHERE property_id = $1) as gross,
+          (SELECT COUNT(*)::int FROM applications WHERE property_id = $1 AND pipeline_stage IN ('approved','lease_sent')) as approved_pending,
+          (SELECT COUNT(*)::int FROM applications WHERE property_id = $1 AND pipeline_stage IN ('lease_executed','move_in_scheduled')) as signed_pending`,
+        [propertyId]
+      ),
     ])
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -165,6 +182,8 @@ router.get('/:token/dashboard', async (req, res) => {
       velocity: { avg_days: velocity.rows[0].avg_days || 0 },
       toursDetail: toursDetail.rows,
       appsDetail: appsDetail.rows,
+      periodStats: periodStats.rows[0],
+      pipelineOverview: pipelineOverview.rows[0],
     })
   } catch (err) {
     res.status(500).json({ error: err.message })

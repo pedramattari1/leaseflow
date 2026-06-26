@@ -3,6 +3,9 @@ import { useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { localToday } from '../lib/localDate'
 import DashboardContent from '../components/dashboard/DashboardContent'
+import PeriodStats from '../components/dashboard/PeriodStats'
+import PipelineOverview from '../components/dashboard/PipelineOverview'
+import WeekComparison from '../components/dashboard/WeekComparison'
 
 function getInitialDate() {
   const params = new URLSearchParams(window.location.search)
@@ -59,6 +62,15 @@ export default function SharedDashboard() {
           <h1 className="text-xl font-bold text-text-primary">{data.property_name}</h1>
           <div className="w-10 h-0.5 bg-accent mx-auto my-3" />
           <p className="text-sm font-medium text-text-secondary">Live Leasing Metrics</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <PeriodStats stats={data.periodStats} />
+          <PipelineOverview overview={data.pipelineOverview} />
+        </div>
+
+        <div className="mb-4">
+          <WeekComparison data={data.weekly?.data} />
         </div>
 
         <DashboardContent
