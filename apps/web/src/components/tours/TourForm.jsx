@@ -100,8 +100,8 @@ export default function TourForm({ tour, rentFloors, onSubmit, onCancel, onDelet
       variance: computedVariance !== '' ? computedVariance : null,
     }
     const result = await onSubmit(payload, !!tour)
-    if (form.status === 'applied' && !tour && onCreateApplication) {
-      setSavedTour(result)
+    if (form.status === 'applied' && onCreateApplication && (!tour || tour.status !== 'applied')) {
+      setSavedTour(result || { ...tour, ...payload })
       setShowApplyPrompt(true)
     } else if (addAnother) {
       setForm({
