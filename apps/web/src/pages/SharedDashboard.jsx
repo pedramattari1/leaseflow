@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../lib/api'
+import { localToday } from '../lib/localDate'
 import DashboardContent from '../components/dashboard/DashboardContent'
 
 function getInitialDate() {
   const params = new URLSearchParams(window.location.search)
-  return params.get('date') || new Date().toISOString().split('T')[0]
+  return params.get('date') || localToday()
 }
 
 export default function SharedDashboard() {
@@ -30,7 +31,7 @@ export default function SharedDashboard() {
     return () => clearInterval(interval)
   }, [selectedDate, fetchData])
 
-  const goToday = () => setSelectedDate(new Date().toISOString().split('T')[0])
+  const goToday = () => setSelectedDate(localToday())
 
   if (error) {
     return (

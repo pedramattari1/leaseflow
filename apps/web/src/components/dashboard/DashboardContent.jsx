@@ -1,3 +1,4 @@
+import { localToday } from '../../lib/localDate'
 import { CalendarDays, Users, FileCheck } from 'lucide-react'
 import MetricCard from './MetricCard'
 import WeeklyChart from './WeeklyChart'
@@ -15,7 +16,7 @@ function formatDateLabel(dateStr) {
 }
 
 function isToday(dateStr) {
-  return dateStr === new Date().toISOString().split('T')[0]
+  return dateStr === localToday()
 }
 
 function isBeforeTracking(dateStr) {

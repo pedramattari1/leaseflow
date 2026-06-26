@@ -14,12 +14,14 @@ import TourTable from '../components/tours/TourTable'
 import TourSummary from '../components/tours/TourSummary'
 import TourForm from '../components/tours/TourForm'
 
+import { localToday, toLocalDateString } from '../lib/localDate'
+
 function getMonday(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   d.setDate(diff)
-  return d.toISOString().split('T')[0]
+  return toLocalDateString(d)
 }
 
 function formatWeekLabel(weekStart) {
@@ -54,10 +56,10 @@ export default function DailyLog() {
   const navigateWeek = (dir) => {
     const d = new Date(weekStart + 'T00:00:00')
     d.setDate(d.getDate() + dir * 7)
-    setSelectedDate(d.toISOString().split('T')[0])
+    setSelectedDate(toLocalDateString(d))
   }
 
-  const goToday = () => setSelectedDate(new Date().toISOString().split('T')[0])
+  const goToday = () => setSelectedDate(localToday())
 
   const handleSubmit = async (form, isEdit) => {
     if (isEdit && editing) {

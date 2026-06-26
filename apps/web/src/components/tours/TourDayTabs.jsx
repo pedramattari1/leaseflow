@@ -1,3 +1,5 @@
+import { localToday, toLocalDateString } from '../../lib/localDate'
+
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function getWeekDates(weekStart) {
@@ -5,13 +7,13 @@ function getWeekDates(weekStart) {
   return DAYS.map((_, i) => {
     const d = new Date(start)
     d.setDate(start.getDate() + i)
-    return d.toISOString().split('T')[0]
+    return toLocalDateString(d)
   })
 }
 
 export default function TourDayTabs({ weekStart, selectedDate, onSelect, tourCounts = {} }) {
   const dates = getWeekDates(weekStart)
-  const today = new Date().toISOString().split('T')[0]
+  const today = localToday()
 
   return (
     <div className="flex border-b border-border">

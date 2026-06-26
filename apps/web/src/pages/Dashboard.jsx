@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { localToday } from '../lib/localDate'
 import { Share2 } from 'lucide-react'
 import { useDashboard } from '../hooks/useDashboard'
 import ErrorBanner from '../components/shared/ErrorBanner'
@@ -8,7 +9,7 @@ import ShareModal from '../components/dashboard/ShareModal'
 
 function getInitialDate() {
   const params = new URLSearchParams(window.location.search)
-  return params.get('date') || new Date().toISOString().split('T')[0]
+  return params.get('date') || localToday()
 }
 
 export default function Dashboard() {

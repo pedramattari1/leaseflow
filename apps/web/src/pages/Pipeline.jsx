@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Download } from 'lucide-react'
+import { localToday } from '../lib/localDate'
 import { useApplications } from '../hooks/useApplications'
 import SlideOver from '../components/shared/SlideOver'
 import LoadingSpinner from '../components/shared/LoadingSpinner'
@@ -20,7 +21,7 @@ export default function Pipeline() {
   }
 
   const handleExport = () => {
-    downloadCsv('/api/applications/export', `pipeline-${new Date().toISOString().split('T')[0]}.csv`)
+    downloadCsv('/api/applications/export', `pipeline-${localToday()}.csv`)
   }
 
   return (

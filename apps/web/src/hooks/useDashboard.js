@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../lib/api'
+import { localToday, toLocalDateString } from '../lib/localDate'
 
 export function useDashboard(initialDate) {
   const [selectedDate, setSelectedDate] = useState(
-    initialDate || new Date().toISOString().split('T')[0]
+    initialDate || localToday()
   )
   const [today, setToday] = useState(null)
   const [weekly, setWeekly] = useState(null)
@@ -48,11 +49,11 @@ export function useDashboard(initialDate) {
     setSelectedDate(prev => {
       const d = new Date(prev + 'T00:00:00')
       d.setDate(d.getDate() + dir)
-      return d.toISOString().split('T')[0]
+      return toLocalDateString(d)
     })
   }
 
-  const goToday = () => setSelectedDate(new Date().toISOString().split('T')[0])
+  const goToday = () => setSelectedDate(localToday())
 
   return {
     today, weekly, pipeline, funnel, velocity, toursDetail, appsDetail,

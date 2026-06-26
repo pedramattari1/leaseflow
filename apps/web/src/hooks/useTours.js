@@ -1,23 +1,20 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { api } from '../lib/api'
+import { localToday, toLocalDateString } from '../lib/localDate'
 
 function getMonday(date) {
-  const d = new Date(date)
+  const d = new Date(date + 'T00:00:00')
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   d.setDate(diff)
-  return d.toISOString().split('T')[0]
-}
-
-function formatDate(date) {
-  return new Date(date).toISOString().split('T')[0]
+  return toLocalDateString(d)
 }
 
 export function useTours() {
   const [tours, setTours] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [selectedDate, setSelectedDate] = useState(formatDate(new Date()))
+  const [selectedDate, setSelectedDate] = useState(localToday())
   const [summary, setSummary] = useState({ hot: 0, warm: 0, cold: 0, applied: 0, not_interested: 0, total: 0 })
 
   const weekStart = useMemo(() => getMonday(selectedDate), [selectedDate])
