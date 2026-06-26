@@ -43,5 +43,10 @@ export function useApplications() {
     return api.get(`/api/applications/${id}/history`)
   }
 
-  return { applications, loading, error, createApplication, updateApplication, moveStage, getHistory, refetch: fetchApplications }
+  const deleteApplication = async (id) => {
+    await api.del(`/api/applications/${id}`)
+    setApplications((prev) => prev.filter((a) => a.id !== id))
+  }
+
+  return { applications, loading, error, createApplication, updateApplication, moveStage, getHistory, deleteApplication, refetch: fetchApplications }
 }

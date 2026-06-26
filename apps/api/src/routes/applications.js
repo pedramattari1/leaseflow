@@ -149,4 +149,21 @@ router.get('/:id/history', async (req, res) => {
   }
 })
 
+router.delete('/:id', async (req, res) => {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query('DELETE FROM pipeline_history WHERE application_id = $1', [req.params.id])
+    const { rowCount } = await client.query('DELETE FROM applications WHERE id = $1', [req.params.id])
+    await client.query('COMMIT')
+    if (rowCount === 0) return res.status(404).json({ error: 'Application not found' })
+    res.json({ success: true })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    res.status(500).json({ error: err.message })
+  } finally {
+    client.release()
+  }
+})
+
 export default router

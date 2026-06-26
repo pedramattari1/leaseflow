@@ -20,9 +20,10 @@ function fmtDateTime(val) {
   return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-export default function AppDetail({ app, getHistory, onMoveStage }) {
+export default function AppDetail({ app, getHistory, onMoveStage, onDelete }) {
   const [history, setHistory] = useState([])
   const [moving, setMoving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (app && getHistory) {
@@ -114,6 +115,29 @@ export default function AppDetail({ app, getHistory, onMoveStage }) {
           </div>
         )}
       </div>
+
+      {onDelete && (
+        <div className="pt-4 border-t border-border">
+          {confirmDelete ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-text-secondary">Delete this application?</span>
+              <button onClick={() => { onDelete(app.id); setConfirmDelete(false) }}
+                className="px-3 py-1.5 text-sm font-semibold text-white bg-error rounded-md hover:bg-error/90 cursor-pointer">
+                Confirm
+              </button>
+              <button onClick={() => setConfirmDelete(false)}
+                className="px-3 py-1.5 text-sm font-medium border border-border rounded-md hover:bg-surface-hover cursor-pointer">
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmDelete(true)}
+              className="px-3 py-1.5 text-sm font-medium text-error border border-error/30 rounded-md hover:bg-error/5 cursor-pointer">
+              Delete Application
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
