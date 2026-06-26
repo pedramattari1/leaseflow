@@ -26,7 +26,7 @@ function isBeforeTracking(dateStr) {
 export default function DashboardContent({
   today, weekly, pipeline, funnel, velocity, toursDetail, appsDetail,
   selectedDate, setSelectedDate, goToday,
-  headerRight,
+  headerRight, showPipelineSummary = true,
 }) {
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -90,10 +90,16 @@ export default function DashboardContent({
 
       {weekly && <div className="mb-4"><WeeklyChart data={weekly.data} weekOf={weekly.weekOf} /></div>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <PipelineSummary data={pipeline || []} />
-        <ConversionFunnel steps={funnel?.steps} />
-      </div>
+      {showPipelineSummary ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <PipelineSummary data={pipeline || []} />
+          <ConversionFunnel steps={funnel?.steps} />
+        </div>
+      ) : (
+        <div className="mb-4">
+          <ConversionFunnel steps={funnel?.steps} />
+        </div>
+      )}
 
       {velocity && <VelocityCard avgDays={velocity.avg_days} />}
     </div>

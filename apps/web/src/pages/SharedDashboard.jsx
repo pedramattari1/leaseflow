@@ -66,11 +66,11 @@ export default function SharedDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           <PeriodStats stats={data.periodStats} />
-          <PipelineOverview overview={data.pipelineOverview} />
+          <WeekComparison data={data.weekly?.data} />
         </div>
 
         <div className="mb-4">
-          <WeekComparison data={data.weekly?.data} />
+          <PipelineOverview overview={data.pipelineOverview} stages={data.pipeline} />
         </div>
 
         <DashboardContent
@@ -84,6 +84,7 @@ export default function SharedDashboard() {
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           goToday={goToday}
+          showPipelineSummary={false}
         />
 
         <p className="text-center text-xs text-text-tertiary mt-12">Powered by LeaseFlow</p>
