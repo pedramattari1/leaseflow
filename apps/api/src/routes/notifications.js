@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { pool } from '../db/index.js'
 import { buildDigest } from '../services/digest.js'
 import { buildWeeklyReport } from '../services/weeklyReport.js'
-import { buildToursWorkbook } from '../services/export.js'
+import { buildToursWorkbook, fetchToursForExport } from '../services/export.js'
 import { sendEmail } from '../services/email.js'
 import { requireCronSecret } from '../middleware/cron.js'
 
@@ -127,29 +127,37 @@ router.post('/daily-export', requireCronSecret, async (req, res) => {
     const property = await pool.query('SELECT name FROM properties WHERE id = $1', [PROPERTY_ID])
     const propertyName = property.rows[0]?.name || 'Property'
 
+    const tours = await fetchToursForExport(PROPERTY_ID, from, to)
+    const tourCount = tours.length
     const buffer = await buildToursWorkbook(PROPERTY_ID, from, to, { title: 'Tours' })
     const rangeLabel = from === to ? from : `${from} to ${to}`
     const filename = from === to
       ? `leasing-export-${from}.xlsx`
       : `leasing-export-${from}_${to}.xlsx`
 
+    const summaryLine = tourCount === 0
+      ? `<p style="color:#b45309; font-weight:600;">No tours were recorded for this date.</p>
+         <p style="color:#555;">The attached file contains headers only — included so you have a record for every day.</p>`
+      : `<p style="color:#555;"><strong>${tourCount}</strong> tour${tourCount === 1 ? '' : 's'} recorded — see the attached spreadsheet.</p>`
+
     const html = `
       <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #1a1a1a;">
         <p>Attached is the daily leasing export for <strong>${propertyName}</strong>.</p>
         <p style="color:#555;">Reporting period: <strong>${rangeLabel}</strong></p>
+        ${summaryLine}
         <p style="color:#888; font-size: 13px;">This is an automated report from LeaseFlow.</p>
       </div>`
 
     for (const email of recipients) {
       await sendEmail({
         to: email,
-        subject: `${propertyName} — Daily Leasing Export (${rangeLabel})`,
+        subject: `${propertyName} — Daily Leasing Export (${rangeLabel})${tourCount === 0 ? ' — No Activity' : ''}`,
         html,
         attachments: [{ filename, content: buffer }],
       })
     }
 
-    res.json({ sent: true, recipients: recipients.length, range: rangeLabel, filename })
+    res.json({ sent: true, recipients: recipients.length, range: rangeLabel, filename, tourCount })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
