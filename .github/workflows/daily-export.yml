@@ -1,0 +1,24 @@
+name: Daily Leasing Export
+
+# Triggers the LeaseFlow daily leasing export each morning. The API endpoint
+# builds the .xlsx and emails it to the export recipients configured in
+# Settings -> Notifications. Nothing is sent unless "Daily Leasing Export" is
+# enabled there and at least one recipient is set.
+
+on:
+  schedule:
+    # 15:00 UTC = 08:00 America/Los_Angeles during PDT (summer, UTC-7).
+    # During PST (winter, UTC-8) this runs at 07:00 local. Adjust if needed.
+    - cron: '0 15 * * *'
+  workflow_dispatch: {} # lets you run it manually from the Actions tab to test
+
+jobs:
+  send-export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily export endpoint
+        run: |
+          curl -fsS -X POST \
+            "https://leaseflow-production-9472.up.railway.app/api/notifications/daily-export" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -w "\nHTTP %{http_code}\n"
