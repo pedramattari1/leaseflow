@@ -77,8 +77,9 @@ export default function TourForm({ tour, rentFloors, onSubmit, onCancel, onDelet
     ? `Minimum lease term for ${weeks}-week concession is ${MIN_TERM[weeks]} months.`
     : null
 
-  const floorWarning = rentFloor && netEffective !== '' && Number(netEffective) < Number(rentFloor.min_gross_rent)
-    ? `Below minimum gross rent of $${Number(rentFloor.min_gross_rent).toLocaleString()} for ${form.unit_type} per lender agreement.`
+  // Lender floor applies to gross market rent (pre-concession), not net effective.
+  const floorWarning = rentFloor && mr > 0 && mr < Number(rentFloor.min_gross_rent)
+    ? `Market rent is below minimum gross rent of $${Number(rentFloor.min_gross_rent).toLocaleString()} for ${form.unit_type} per lender agreement.`
     : null
 
   // Variance computed from net effective
