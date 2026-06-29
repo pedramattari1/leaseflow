@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import crypto from 'crypto'
 import { pool } from '../db/index.js'
+import { buildToursWorkbook } from '../services/export.js'
 
 const router = Router()
 const PROPERTY_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
@@ -185,6 +186,37 @@ router.get('/:token/dashboard', async (req, res) => {
       periodStats: periodStats.rows[0],
       pipelineOverview: pipelineOverview.rows[0],
     })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Token-scoped export so shared-dashboard viewers (e.g. management) can
+// download the leasing .xlsx without logging in. Exports the week (Mon–Sun)
+// containing the given date.
+router.get('/:token/export', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM share_links WHERE token = $1',
+      [req.params.token]
+    )
+    if (!rows.length) return res.status(404).json({ error: 'Invalid link' })
+
+    const link = rows[0]
+    if (link.expires_at && new Date(link.expires_at) < new Date()) {
+      return res.status(410).json({ error: 'Link expired' })
+    }
+
+    const date = req.query.date || new Date().toISOString().split('T')[0]
+    const monday = getMonday(new Date(date + 'T00:00:00')).toISOString().split('T')[0]
+    const end = new Date(monday + 'T00:00:00')
+    end.setDate(end.getDate() + 6)
+    const sunday = end.toISOString().split('T')[0]
+
+    const buffer = await buildToursWorkbook(link.property_id, monday, sunday, { title: 'Tours' })
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename=leasing-export-${monday}.xlsx`)
+    res.send(buffer)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

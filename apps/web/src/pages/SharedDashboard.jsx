@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
+import { Download } from 'lucide-react'
 import { api } from '../lib/api'
 import { localToday } from '../lib/localDate'
+import { downloadCsv } from '../lib/downloadCsv'
 import DashboardContent from '../components/dashboard/DashboardContent'
 import PeriodStats from '../components/dashboard/PeriodStats'
 import PipelineOverview from '../components/dashboard/PipelineOverview'
@@ -35,6 +37,10 @@ export default function SharedDashboard() {
   }, [selectedDate, fetchData])
 
   const goToday = () => setSelectedDate(localToday())
+
+  const handleExport = () => {
+    downloadCsv(`/api/share/${token}/export?date=${selectedDate}`, `leasing-export-${selectedDate}.xlsx`)
+  }
 
   if (error) {
     return (
@@ -85,6 +91,15 @@ export default function SharedDashboard() {
           setSelectedDate={setSelectedDate}
           goToday={goToday}
           showPipelineSummary={false}
+          headerRight={
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-hover cursor-pointer"
+            >
+              <Download size={16} strokeWidth={1.5} />
+              Export
+            </button>
+          }
         />
 
         <p className="text-center text-xs text-text-tertiary mt-12">Powered by LeaseFlow</p>
