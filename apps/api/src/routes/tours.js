@@ -5,6 +5,30 @@ import { buildToursWorkbook } from '../services/export.js'
 const router = Router()
 const PROPERTY_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
 
+// Ensure an applied tour has a corresponding pipeline application.
+// Idempotent: does nothing if the tour isn't applied or the prospect already
+// has an application. Runs inside the caller's transaction (client).
+async function ensureApplicationForApplied(client, tour) {
+  if (!tour || tour.status !== 'applied') return
+  const existing = await client.query(
+    'SELECT id FROM applications WHERE prospect_id = $1 AND property_id = $2 LIMIT 1',
+    [tour.prospect_id, PROPERTY_ID]
+  )
+  if (existing.rows.length) return
+  const { rows } = await client.query(
+    `INSERT INTO applications (prospect_id, property_id, unit_id, unit_type, unit_number,
+       market_rent, pipeline_stage, app_submitted_date)
+     VALUES ($1,$2,$3,$4,$5,$6,'applied',$7) RETURNING id`,
+    [tour.prospect_id, PROPERTY_ID, tour.unit_id || null, tour.unit_type || null,
+     tour.unit_number || null, tour.market_rent || null,
+     tour.tour_date || new Date().toISOString().split('T')[0]]
+  )
+  await client.query(
+    `INSERT INTO pipeline_history (application_id, from_stage, to_stage) VALUES ($1, NULL, 'applied')`,
+    [rows[0].id]
+  )
+}
+
 router.get('/', async (req, res) => {
   try {
     const { date, week } = req.query
@@ -112,6 +136,8 @@ router.post('/', async (req, res) => {
        desired_term || null, estimated_move_in || null, status || 'warm', notes || null]
     )
 
+    await ensureApplicationForApplied(client, rows[0])
+
     await client.query('COMMIT')
     const tour = rows[0]
     tour.prospect_name = prospect_name
@@ -162,6 +188,8 @@ router.put('/:id', async (req, res) => {
       [prospect_name || null, prospect_email || null, prospect_phone || null,
        profession || null, num_vehicles ?? 0, source || null, tour.prospect_id, PROPERTY_ID]
     )
+
+    await ensureApplicationForApplied(client, tour)
 
     await client.query('COMMIT')
 

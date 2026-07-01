@@ -55,6 +55,14 @@ router.post('/', async (req, res) => {
       app_submitted_date, notes
     } = req.body
 
+    // Idempotent: never create a second pipeline application for a prospect
+    // already in the pipeline — return the existing one instead.
+    const existing = await pool.query(
+      'SELECT * FROM applications WHERE prospect_id = $1 AND property_id = $2 LIMIT 1',
+      [prospect_id, PROPERTY_ID]
+    )
+    if (existing.rows.length) return res.status(200).json(existing.rows[0])
+
     const { rows } = await pool.query(
       `INSERT INTO applications (prospect_id, property_id, unit_id, unit_type, unit_number,
         market_rent, pipeline_stage, app_submitted_date, notes)
