@@ -5,6 +5,40 @@ import { buildToursWorkbook } from '../services/export.js'
 const router = Router()
 const PROPERTY_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
 
+// Authoritative concession math — mirrors the tour form, but computed
+// server-side so stored values are always correct regardless of entry path.
+function computeConcessionFields({ market_rent, concession_weeks, desired_term, budget }) {
+  const mr = Number(market_rent) || 0
+  const weeks = Number(concession_weeks) || 0
+  const term = Number(desired_term) || 0
+  const concession = (mr && weeks) ? (mr * 12) / 52 * weeks : 0
+  const netEffective = (mr && term) ? mr - concession / term : null
+  const effective_rent = netEffective != null ? netEffective.toFixed(2) : null
+  const b = Number(budget) || 0
+  let variance = null
+  if (b) {
+    if (netEffective != null) variance = netEffective - b
+    else if (mr) variance = mr - b
+  }
+  return { concession, effective_rent, variance }
+}
+
+// Find an existing prospect for this property to avoid duplicates. Matches on
+// email or phone when available, otherwise falls back to an exact name match.
+async function findExistingProspect(client, { prospect_name, prospect_email, prospect_phone }) {
+  const { rows } = await client.query(
+    `SELECT id FROM prospects
+     WHERE property_id = $1 AND (
+       (NULLIF($2,'') IS NOT NULL AND lower(email) = lower($2)) OR
+       (NULLIF($3,'') IS NOT NULL AND phone = $3) OR
+       (lower(name) = lower($4))
+     )
+     ORDER BY created_at DESC LIMIT 1`,
+    [PROPERTY_ID, prospect_email || '', prospect_phone || '', prospect_name || '']
+  )
+  return rows[0]?.id || null
+}
+
 // Ensure an applied tour has a corresponding pipeline application.
 // Idempotent: does nothing if the tour isn't applied or the prospect already
 // has an application. Runs inside the caller's transaction (client).
@@ -115,14 +149,35 @@ router.post('/', async (req, res) => {
 
     let prospect_id = existingProspectId
     if (!prospect_id) {
-      const { rows } = await client.query(
-        `INSERT INTO prospects (property_id, name, email, phone, profession, num_vehicles, source)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [PROPERTY_ID, prospect_name, prospect_email || null, prospect_phone || null,
-         profession || null, num_vehicles || 0, source || null]
-      )
-      prospect_id = rows[0].id
+      // Reuse an existing prospect if this person is already on file (dedup),
+      // refreshing their details with any newly provided info.
+      const matchId = await findExistingProspect(client, { prospect_name, prospect_email, prospect_phone })
+      if (matchId) {
+        prospect_id = matchId
+        await client.query(
+          `UPDATE prospects SET
+             email = COALESCE(NULLIF($1,''), email),
+             phone = COALESCE(NULLIF($2,''), phone),
+             profession = COALESCE(NULLIF($3,''), profession),
+             num_vehicles = COALESCE($4, num_vehicles),
+             source = COALESCE(NULLIF($5,''), source),
+             updated_at = now()
+           WHERE id = $6`,
+          [prospect_email || '', prospect_phone || '', profession || '',
+           num_vehicles ?? null, source || '', prospect_id]
+        )
+      } else {
+        const { rows } = await client.query(
+          `INSERT INTO prospects (property_id, name, email, phone, profession, num_vehicles, source)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [PROPERTY_ID, prospect_name, prospect_email || null, prospect_phone || null,
+           profession || null, num_vehicles || 0, source || null]
+        )
+        prospect_id = rows[0].id
+      }
     }
+
+    const calc = computeConcessionFields({ market_rent, concession_weeks, desired_term, budget })
 
     const { rows } = await client.query(
       `INSERT INTO tours (prospect_id, property_id, tour_date, unit_id, unit_type, unit_number,
@@ -131,8 +186,8 @@ router.post('/', async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
       [prospect_id, PROPERTY_ID, tour_date || new Date().toISOString().split('T')[0],
        unit_id || null, unit_type || null, unit_number || null,
-       market_rent || null, concession || 0, concession_weeks || 0, effective_rent || null,
-       budget || null, variance || null, comps_toured || 0,
+       market_rent || null, calc.concession, concession_weeks || 0, calc.effective_rent,
+       budget || null, calc.variance, comps_toured || 0,
        desired_term || null, estimated_move_in || null, status || 'warm', notes || null]
     )
 
@@ -163,13 +218,14 @@ router.put('/:id', async (req, res) => {
       budget, variance, comps_toured, desired_term, estimated_move_in, status, notes
     } = req.body
 
+    const calc = computeConcessionFields({ market_rent, concession_weeks, desired_term, budget })
     const { rows } = await client.query(
       `UPDATE tours SET unit_id=$1, unit_type=$2, unit_number=$3, market_rent=$4,
         concession=$5, concession_weeks=$6, effective_rent=$7, budget=$8, variance=$9, comps_toured=$10,
         desired_term=$11, estimated_move_in=$12, status=$13, notes=$14, updated_at=now()
        WHERE id=$15 AND property_id=$16 RETURNING *`,
       [unit_id || null, unit_type, unit_number, market_rent || null,
-       concession || 0, concession_weeks || 0, effective_rent || null, budget || null, variance || null,
+       calc.concession, concession_weeks || 0, calc.effective_rent, budget || null, calc.variance,
        comps_toured || 0, desired_term || null, estimated_move_in || null,
        status, notes || null, req.params.id, PROPERTY_ID]
     )

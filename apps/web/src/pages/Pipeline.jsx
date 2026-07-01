@@ -11,7 +11,7 @@ import AppDetail from '../components/pipeline/AppDetail'
 import { downloadCsv } from '../lib/downloadCsv'
 
 export default function Pipeline() {
-  const { applications, loading, error, moveStage, getHistory, deleteApplication, refetch } = useApplications()
+  const { applications, loading, error, moveStage, getHistory, deleteApplication, updateApplication, refetch } = useApplications()
   const [view, setView] = useState('kanban')
   const [selected, setSelected] = useState(null)
 
@@ -66,7 +66,16 @@ export default function Pipeline() {
       )}
 
       <SlideOver open={!!selected} onClose={() => setSelected(null)} title="Application Detail">
-        <AppDetail app={selected} getHistory={getHistory} onMoveStage={handleMoveStage} onDelete={async (id) => { await deleteApplication(id); setSelected(null) }} />
+        <AppDetail
+          app={selected}
+          getHistory={getHistory}
+          onMoveStage={handleMoveStage}
+          onDelete={async (id) => { await deleteApplication(id); setSelected(null) }}
+          onUpdate={async (id, patch) => {
+            const updated = await updateApplication(id, patch)
+            setSelected((prev) => prev && prev.id === id ? { ...prev, ...updated } : prev)
+          }}
+        />
       </SlideOver>
     </div>
   )

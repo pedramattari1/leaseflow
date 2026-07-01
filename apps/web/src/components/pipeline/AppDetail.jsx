@@ -20,10 +20,12 @@ function fmtDateTime(val) {
   return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-export default function AppDetail({ app, getHistory, onMoveStage, onDelete }) {
+export default function AppDetail({ app, getHistory, onMoveStage, onDelete, onUpdate }) {
   const [history, setHistory] = useState([])
   const [moving, setMoving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [unit, setUnit] = useState({ unit_number: '', unit_type: '', market_rent: '' })
+  const [savingUnit, setSavingUnit] = useState(false)
 
   useEffect(() => {
     if (app && getHistory) {
@@ -31,7 +33,38 @@ export default function AppDetail({ app, getHistory, onMoveStage, onDelete }) {
     }
   }, [app?.id, app?.pipeline_stage])
 
+  useEffect(() => {
+    if (app) {
+      setUnit({
+        unit_number: app.unit_number || '',
+        unit_type: app.unit_type || '',
+        market_rent: app.market_rent != null ? String(app.market_rent) : '',
+      })
+    }
+  }, [app?.id])
+
   if (!app) return null
+
+  const unitChanged = app && (
+    (unit.unit_number || '') !== (app.unit_number || '') ||
+    (unit.unit_type || '') !== (app.unit_type || '') ||
+    (unit.market_rent || '') !== (app.market_rent != null ? String(app.market_rent) : '')
+  )
+
+  const saveUnit = async () => {
+    if (!onUpdate) return
+    setSavingUnit(true)
+    try {
+      await onUpdate(app.id, {
+        ...app,
+        unit_number: unit.unit_number || null,
+        unit_type: unit.unit_type || null,
+        market_rent: unit.market_rent !== '' ? Number(unit.market_rent) : null,
+      })
+    } finally {
+      setSavingUnit(false)
+    }
+  }
 
   const handleStageChange = async (e) => {
     const newStage = e.target.value
@@ -48,9 +81,6 @@ export default function AppDetail({ app, getHistory, onMoveStage, onDelete }) {
     ['Name', app.prospect_name],
     ['Email', app.prospect_email],
     ['Phone', app.prospect_phone],
-    ['Unit #', app.unit_number],
-    ['Unit Type', app.unit_type],
-    ['Market Rent', app.market_rent ? `$${Number(app.market_rent).toLocaleString()}` : '—'],
     ['App Submitted', fmtDate(app.app_submitted_date)],
     ['Approval Date', fmtDate(app.approval_date)],
     ['Lease Target', fmtDate(app.lease_execution_target)],
@@ -80,6 +110,57 @@ export default function AppDetail({ app, getHistory, onMoveStage, onDelete }) {
           ))}
         </select>
       </div>
+
+      {onUpdate && (
+        <div className="border border-border rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-text-primary">Applied Unit</h4>
+            {unitChanged && (
+              <button
+                onClick={saveUnit}
+                disabled={savingUnit}
+                className="px-3 py-1 text-xs font-semibold text-white bg-primary rounded-md hover:bg-primary-hover cursor-pointer disabled:opacity-50"
+              >
+                {savingUnit ? 'Saving…' : 'Save'}
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-text-tertiary -mt-1">Narrow this down to the specific unit the applicant chose.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Unit #</label>
+              <input
+                type="text"
+                value={unit.unit_number}
+                onChange={(e) => setUnit((u) => ({ ...u, unit_number: e.target.value }))}
+                placeholder="e.g. 716"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Unit Type</label>
+              <input
+                type="text"
+                value={unit.unit_type}
+                onChange={(e) => setUnit((u) => ({ ...u, unit_type: e.target.value }))}
+                placeholder="e.g. 1bd 1ba B"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-text-secondary mb-1">Market Rent</label>
+              <input
+                type="number"
+                min="0"
+                value={unit.market_rent}
+                onChange={(e) => setUnit((u) => ({ ...u, market_rent: e.target.value }))}
+                placeholder="e.g. 3730"
+                className="w-full px-3 py-2 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {details.map(([label, value]) => (
